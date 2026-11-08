@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Explorer • Book Discovery &amp; RESTful API Dashboard</title>
+    <meta name="description" content="Cognifyz Full Stack Development Internship Task 7 - Advanced API Explorer featuring Open Library integration, Flask-Limiter rate limiting, bounded in-memory caching, and OAuth 2.0 educational architecture.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="theme-dark">
+    <!-- Background Animated Gradient Orbs -->
+    <div class="bg-blur-container" aria-hidden="true">
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+        <div class="bg-orb orb-3"></div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container" role="region" aria-live="polite" aria-label="Notifications"></div>
+
+    <!-- Main Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-group">
+                <div class="brand-icon-wrapper">
+                    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path>
+                        <path d="M6 6h10"></path>
+                        <path d="M6 10h7"></path>
+                        <path d="m14 14 3 3 5-5"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="brand-badge">Cognifyz Internship • Task 7</div>
+                    <h1 class="brand-title">API Explorer</h1>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- Live Health Pill -->
+                <button id="health-btn" class="status-pill" title="Click to view live server health" aria-label="Server Health Status">
+                    <span class="status-dot healthy" id="health-dot"></span>
+                    <span id="health-text">API Online</span>
+                </button>
+
+                <!-- Rate Limit Pill -->
+                <div class="rate-limit-pill" title="Configured via Flask-Limiter: 30 requests per minute">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>Rate Limit: <strong>30/min</strong></span>
+                </div>
+
+                <!-- OAuth Info Button -->
+                <button id="oauth-modal-trigger" class="btn btn-outline btn-sm">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span>OAuth 2.0 Guide</span>
+                </button>
+
+                <!-- API Docs Button -->
+                <button id="docs-modal-trigger" class="btn btn-ghost btn-sm" title="API Architecture & Endpoints">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>Endpoints</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-wrapper">
+        <!-- Hero Search Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <span class="hero-tagline">Advanced RESTful Integration &amp; Book Discovery</span>
+                <h2 class="hero-heading">Explore Millions of Books via Open Library</h2>
+                <p class="hero-subtext">
+                    Live client-server integration demonstrating bounded TTL caching, server-side input validation, 
+                    Flask-Limiter rate throttling, and HTTP 429 protection.
+                </p>
+
+                <!-- Search Box Form -->
+                <form id="search-form" class="search-box-card" role="search" novalidate>
+                    <div class="search-input-group">
+                        <div class="search-icon-wrapper" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+                        <input 
+                            type="text" 
+                            id="search-input" 
+                            name="q" 
+                            placeholder="Search by title, author, topic (e.g., Clean Code, Tolkien, Dune)..." 
+                            autocomplete="off" 
+                            maxlength="120"
+                            required
+                            aria-label="Search books by title, author, or keyword"
+                        >
+                        <button type="button" id="clear-search-btn" class="clear-btn hidden" aria-label="Clear search input">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <button type="submit" id="search-submit-btn" class="btn btn-primary search-submit-btn">
+                        <span class="btn-text">Search Catalog</span>
+                        <svg class="btn-spinner hidden" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                        </svg>
+                    </button>
+                </form>
+
+                <!-- Quick Query Chips -->
+                <div class="query-chips-wrapper">
+                    <span class="chips-label">Quick Searches:</span>
+                    <div class="chips-container">
+                        <button type="button" class="query-chip" data-query="Artificial Intelligence">AI &amp; Machine Learning</button>
+                        <button type="button" class="query-chip" data-query="Clean Code">Clean Code</button>
+                        <button type="button" class="query-chip" data-query="The Lord of the Rings">Lord of the Rings</button>
+                        <button type="button" class="query-chip" data-query="Cybersecurity">Cybersecurity</button>
+                        <button type="button" class="query-chip" data-query="Design Patterns">Design Patterns</button>
+                        <button type="button" class="query-chip" data-query="Dune">Dune</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dynamic Results Section -->
+        <section class="results-section" id="results-section">
+            <!-- Results Header & Meta Ribbon (Visible when search is performed) -->
+            <div id="results-meta-ribbon" class="results-meta-ribbon hidden">
+                <div class="meta-left">
+                    <h3 class="results-query-title">
+                        Results for <span class="highlight-query" id="meta-query-text">"..."</span>
+                    </h3>
+                    <span class="results-count-badge" id="meta-count-text">0 books found</span>
+                </div>
+                <div class="meta-right">
+                    <!-- Cache & Performance Badges -->
+                    <div id="cache-badge" class="meta-badge cache-badge" title="Response Origin">
+                        <span class="badge-dot"></span>
+                        <span id="cache-badge-text">Cache MISS</span>
+                    </div>
+                    <div id="latency-badge" class="meta-badge latency-badge" title="Response Latency">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        <span id="latency-text">0 ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Banner (Inline display if server or network failure) -->
+            <div id="inline-error-banner" class="error-banner hidden" role="alert">
+                <div class="error-icon">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <div class="error-content">
+                    <h4 class="error-title" id="error-title">Search Request Failed</h4>
+                    <p class="error-desc" id="error-desc">An error occurred while fetching books.</p>
+                </div>
+                <button type="button" id="error-retry-btn" class="btn btn-outline btn-sm">Try Again</button>
+            </div>
+
+            <!-- Initial Feature Showcase (Rendered before any search is executed) -->
+            <div id="initial-state-showcase" class="initial-showcase">
+                <div class="showcase-header">
+                    <span class="showcase-badge">Enterprise Full-Stack Architecture</span>
+                    <h3>Engineered for Reliability, Performance &amp; Security</h3>
+                    <p>This project satisfies all requirements for Cognifyz Task 7. Explore its core pillars below:</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon icon-cyan">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                        </div>
+                        <h4>Live External API</h4>
+                        <p>Communicates directly with the Open Library REST API (<code>/search.json</code>) with strict connection and read timeouts.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon icon-indigo">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </div>
+                        <h4>Flask-Limiter Throttling</h4>
+                        <p>Protects resources with a 30 req/min client rate limit. Returns structured HTTP 429 JSON errors with retry directives.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon icon-emerald">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                                <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                                <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                                <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                            </svg>
+                        </div>
+                        <h4>Bounded In-Memory Cache</h4>
+                        <p>Thread-safe bounded cache with 300-second TTL. Prevents redundant upstream calls and accelerates repeated searches.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon icon-purple">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <h4>OAuth 2.0 Concepts</h4>
+                        <p>Comprehensive educational breakdown of authorization flows, tokens, and contrast between open vs. protected APIs.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Skeleton Grid -->
+            <div id="loading-skeleton-grid" class="books-grid skeleton-grid hidden" aria-hidden="true">
+                <!-- 6 Skeleton Cards -->
+                <div class="skeleton-card" tabindex="-1">
+                    <div class="skeleton-cover"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line line-title"></div>
+                        <div class="skeleton-line line-author"></div>
+                        <div class="skeleton-badges">
+                            <div class="skeleton-pill"></div>
+                            <div class="skeleton-pill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skeleton-card" tabindex="-1">
+                    <div class="skeleton-cover"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line line-title"></div>
+                        <div class="skeleton-line line-author"></div>
+                        <div class="skeleton-badges">
+                            <div class="skeleton-pill"></div>
+                            <div class="skeleton-pill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skeleton-card" tabindex="-1">
+                    <div class="skeleton-cover"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line line-title"></div>
+                        <div class="skeleton-line line-author"></div>
+                        <div class="skeleton-badges">
+                            <div class="skeleton-pill"></div>
+                            <div class="skeleton-pill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skeleton-card" tabindex="-1">
+                    <div class="skeleton-cover"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line line-title"></div>
+                        <div class="skeleton-line line-author"></div>
+                        <div class="skeleton-badges">
+                            <div class="skeleton-pill"></div>
+                            <div class="skeleton-pill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skeleton-card" tabindex="-1">
+                    <div class="skeleton-cover"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line line-title"></div>
+                        <div class="skeleton-line line-author"></div>
+                        <div class="skeleton-badges">
+                            <div class="skeleton-pill"></div>
+                            <div class="skeleton-pill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="skeleton-card" tabindex="-1">
+                    <div class="skeleton-cover"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line line-title"></div>
+                        <div class="skeleton-line line-author"></div>
+                        <div class="skeleton-badges">
+                            <div class="skeleton-pill"></div>
+                            <div class="skeleton-pill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty Results State -->
+            <div id="empty-state-card" class="empty-state-card hidden">
+                <div class="empty-icon-wrapper">
+                    <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <line x1="8" y1="11" x2="14" y2="11"></line>
+                    </svg>
+                </div>
+                <h3 class="empty-title">No Matching Books Found</h3>
+                <p class="empty-desc">
+                    We could not find any titles matching your search on Open Library. 
+                    Try checking for spelling errors, using fewer keywords, or searching by author name.
+                </p>
+                <div class="empty-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="empty-reset-btn">Reset Search</button>
+                </div>
+            </div>
+
+            <!-- Live Books Result Grid -->
+            <div id="books-grid" class="books-grid"></div>
+
+            <!-- Pagination Bar -->
+            <nav id="pagination-nav" class="pagination-container hidden" aria-label="Book search pagination">
+                <button type="button" id="prev-page-btn" class="btn btn-ghost pagination-btn" disabled>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                    <span>Previous</span>
+                </button>
+
+                <div id="pagination-pages" class="pagination-pages-list"></div>
+
+                <button type="button" id="next-page-btn" class="btn btn-ghost pagination-btn" disabled>
+                    <span>Next</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+
+                <div class="page-jump-wrapper">
+                    <span>Page</span>
+                    <input type="number" id="page-jump-input" min="1" max="100" value="1" aria-label="Jump to page">
+                    <span id="page-jump-total">of 1</span>
+                    <button type="button" id="page-jump-btn" class="btn btn-outline btn-xs">Go</button>
+                </div>
+            </nav>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <p>API Explorer • Cognifyz Full Stack Development Internship • Task 7</p>
+            <p class="footer-sub">Powered by Python 3, Flask, Flask-Limiter, and the Open Library API.</p>
+        </div>
+    </footer>
+
+    <!-- ============================================================
+         MODAL: OAuth 2.0 Architectural Guide
+         ============================================================ -->
+    <div id="oauth-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="oauth-modal-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-badge">Architecture &amp; Security</div>
+                    <h2 id="oauth-modal-title" class="modal-title">Understanding OAuth 2.0 &amp; API Security</h2>
+                </div>
+                <button type="button" class="modal-close-btn" id="oauth-modal-close" aria-label="Close dialog">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="oauth-section">
+                    <h3>1. What is OAuth 2.0?</h3>
+                    <p>
+                        <strong>OAuth 2.0</strong> is the industry-standard protocol for <em>delegated authorization</em>. 
+                        It allows a third-party application (the Client) to access protected user resources on an HTTP service 
+                        (the Resource Server) on behalf of a user (the Resource Owner), without exposing the user's password.
+                    </p>
+                </div>
+
+                <div class="oauth-section">
+                    <h3>2. The Four Core Roles</h3>
+                    <div class="roles-grid">
+                        <div class="role-box">
+                            <strong>Resource Owner</strong>
+                            <span>The end-user who grants access to their protected data or account.</span>
+                        </div>
+                        <div class="role-box">
+                            <strong>Client</strong>
+                            <span>The application requesting access (e.g. mobile app or web client).</span>
+                        </div>
+                        <div class="role-box">
+                            <strong>Authorization Server</strong>
+                            <span>Authenticates the owner and issues signed access tokens (e.g., Auth0, Google Identity).</span>
+                        </div>
+                        <div class="role-box">
+                            <strong>Resource Server</strong>
+                            <span>The API hosting the protected data that validates the bearer access tokens.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="oauth-section">
+                    <h3>3. Authorization Flows (Grant Types)</h3>
+                    <div class="flows-list">
+                        <div class="flow-item">
+                            <span class="flow-badge">Authorization Code + PKCE</span>
+                            <p>Recommended for SPAs and mobile apps. Obtains an authorization code via a secure browser redirect, then exchanges it alongside a cryptographic code verifier for an Access Token.</p>
+                        </div>
+                        <div class="flow-item">
+                            <span class="flow-badge">Client Credentials Flow</span>
+                            <p>Used for server-to-server communication where no individual user is involved. The backend presents its own Client ID and Secret to obtain a service-level token.</p>
+                        </div>
+                        <div class="flow-item">
+                            <span class="flow-badge">Refresh Token Flow</span>
+                            <p>Allows clients to obtain new short-lived access tokens without forcing the user to re-authenticate when tokens expire.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="oauth-section">
+                    <h3>4. When is OAuth Required vs. Not Required?</h3>
+                    <div class="comparison-grid">
+                        <div class="comparison-card required">
+                            <h4>Requires OAuth 2.0</h4>
+                            <ul>
+                                <li>Accessing private user data (e.g. reading private bookshelves, user profile)</li>
+                                <li>Performing state mutations (e.g. adding reviews, borrowing an ebook)</li>
+                                <li>Granular permission scoping (read vs write)</li>
+                            </ul>
+                        </div>
+                        <div class="comparison-card not-required">
+                            <h4>Does Not Require OAuth (This Project)</h4>
+                            <ul>
+                                <li>Public, read-only catalog searches (e.g., Open Library Search API)</li>
+                                <li>Open data endpoints requiring zero personal identification</li>
+                                <li>Protected on the backend via <strong>Flask-Limiter rate limits</strong> and <strong>caching</strong> instead</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="oauth-modal-dismiss">Got It</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MODAL: Endpoints & Health Diagnostics
+         ============================================================ -->
+    <div id="docs-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="docs-modal-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-badge">API Documentation</div>
+                    <h2 id="docs-modal-title" class="modal-title">Backend Endpoints &amp; Live Telemetry</h2>
+                </div>
+                <button type="button" class="modal-close-btn" id="docs-modal-close" aria-label="Close dialog">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Live Diagnostics Card -->
+                <div class="diagnostics-card">
+                    <h4>Live Server Health (/api/health)</h4>
+                    <pre id="health-json-display" class="json-code">Fetching server telemetry...</pre>
+                    <button type="button" id="refresh-health-btn" class="btn btn-outline btn-xs" style="margin-top: 8px;">Refresh Telemetry</button>
+                </div>
+
+                <div class="endpoints-table-wrapper">
+                    <table class="endpoints-table">
+                        <thead>
+                            <tr>
+                                <th>Method &amp; Path</th>
+                                <th>Rate Limit</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="method get">GET</span> <code>/</code></td>
+                                <td>120 / min</td>
+                                <td>Serves the Single Page Application UI</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method get">GET</span> <code>/api/health</code></td>
+                                <td>120 / min</td>
+                                <td>Returns server status, in-memory cache size, and API metrics</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method get">GET</span> <code>/api/search?q=&amp;page=</code></td>
+                                <td>30 / min</td>
+                                <td>Searches books with validation, bounded caching, and 429 limiter</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="error-codes-section">
+                    <h4>HTTP Status Codes Handled</h4>
+                    <div class="code-badges-list">
+                        <span class="status-chip code-200">200 OK</span>
+                        <span class="status-chip code-400">400 Bad Request</span>
+                        <span class="status-chip code-404">404 Not Found</span>
+                        <span class="status-chip code-429">429 Rate Limited</span>
+                        <span class="status-chip code-502">502 Bad Gateway</span>
+                        <span class="status-chip code-503">503 Service Unavailable</span>
+                        <span class="status-chip code-504">504 Gateway Timeout</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="docs-modal-dismiss">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script -->
+    <script src="/static/script.js"></script>
+</body>
+</html>
